@@ -1,9 +1,11 @@
 name: Build Releases
 on:
-  watch:
-    types: started
-  repository_dispatch:
-    types: build
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release Tag'
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -29,7 +31,11 @@ jobs:
 
       - name: Install Rust
         run: |
-          bash <(curl --proto '=https' --tlsv1.2 -sS ${{ secrets.rustup }}) ${{ matrix.target }}
+          rustup set profile minimal
+          rustup toolchain install 1.74
+          rustup default 1.74
+          rustup override set 1.74
+          rustup target add --toolchain 1.74 ${{ matrix.target }}
 
       - name: Install cross
         run: cargo install cross
@@ -43,7 +49,7 @@ jobs:
           echo shadowsocks_version="$shadowsocks_version" >> "$GITHUB_ENV"
           git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
           cd build
-          ./build-release -t ${{ matrix.target }} -f 'local-redir,local-tun'
+          ./build-release -t ${{ matrix.target }} -f 'full'
           cd release
           sha256sum shadowsocks-$shadowsocks_version.${{ matrix.target }}.tar.xz > shadowsocks-$shadowsocks_version.${{ matrix.target }}.tar.xz.sha256
 
